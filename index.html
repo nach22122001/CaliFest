@@ -83,7 +83,13 @@
                 check: <polyline points="20 6 9 17 4 12" />,
                 chevronLeft: <polyline points="15 18 9 12 15 6" />,
                 chevronRight: <polyline points="9 18 15 12 9 6" />,
-                info: <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
+                info: (
+                    <React.Fragment>
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="16" x2="12" y2="12" />
+                        <line x1="12" y1="8" x2="12.01" y2="8" />
+                    </React.Fragment>
+                )
             };
             return (
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -331,7 +337,7 @@
                         <button onClick={() => setShowModal(true)} className="w-16 h-16 bg-[#deff9a] rounded-full flex items-center justify-center -mt-20 border-[6px] border-black text-black active:scale-[0.85] transition-all shadow-2xl shadow-[#deff9a]/40">
                             <Icon name="plus" />
                         </button>
-                        <button onClick={() => setActiveTab('progress')} className={`p-3 transition-all ${activeTab === 'progress' ? 'active-tab' : 'text-neutral-700'}`}>
+                        <button onClick={() => setActiveTab('progress')} className={`p-3 transition-all ${activeTab === 'progress' ? 'text-neutral-700' : 'text-neutral-700'}`}>
                             <Icon name="chart" />
                         </button>
                     </nav>
