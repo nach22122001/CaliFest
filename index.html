@@ -12,7 +12,7 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
         
         :root {
             --neon: #deff9a;
@@ -24,8 +24,17 @@
             background-color: var(--bg); 
             color: white; 
             margin: 0;
-            overscroll-behavior-y: contain;
+            padding: 0;
             -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        /* Solución al scroll en móvil */
+        .app-container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding-bottom: 200px; /* Espacio extra masivo para asegurar scroll completo */
         }
 
         .loading-screen {
@@ -39,20 +48,22 @@
         }
 
         @keyframes spin { to { transform: rotate(360deg); } }
-
-        /* Estilo para los inputs en iOS */
-        input { font-size: 16px !important; } /* Evita zoom automático en iPhone */
         
         .active-tab { 
             color: var(--neon); 
-            filter: drop-shadow(0 0 10px rgba(222, 255, 154, 0.5));
-            transform: scale(1.1);
+            filter: drop-shadow(0 0 12px rgba(222, 255, 154, 0.6));
         }
 
         .glass {
-            background: rgba(20, 20, 20, 0.8);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
+            background: rgba(20, 20, 20, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        /* Estilo para los inputs */
+        input:focus {
+            border-color: var(--neon) !important;
+            box-shadow: 0 0 10px rgba(222, 255, 154, 0.2);
         }
     </style>
 </head>
@@ -64,7 +75,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useMemo } = React;
 
         const Icon = ({ name, className = "" }) => {
             const icons = {
@@ -73,9 +84,7 @@
                 calendar: (
                     <React.Fragment>
                         <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                        <line x1="16" y1="2" x2="16" y2="6" />
-                        <line x1="8" y1="2" x2="8" y2="6" />
-                        <line x1="3" y1="10" x2="21" y2="10" />
+                        <line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
                     </React.Fragment>
                 ),
                 chart: <path d="M18 20V10M12 20V4M6 20v-6" />,
@@ -83,11 +92,12 @@
                 check: <polyline points="20 6 9 17 4 12" />,
                 chevronLeft: <polyline points="15 18 9 12 15 6" />,
                 chevronRight: <polyline points="9 18 15 12 9 6" />,
-                info: (
+                trash: <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />,
+                target: (
                     <React.Fragment>
                         <circle cx="12" cy="12" r="10" />
-                        <line x1="12" y1="16" x2="12" y2="12" />
-                        <line x1="12" y1="8" x2="12.01" y2="8" />
+                        <circle cx="12" cy="12" r="6" />
+                        <circle cx="12" cy="12" r="2" />
                     </React.Fragment>
                 )
             };
@@ -103,39 +113,39 @@
         const getWorkoutForWeek = (day, week) => {
             const data = {
                 'Lunes': { type: 'fuerza', title: 'Upper Body & Handstand', focus: 'Hombros y Empuje', exercises: [
-                    { name: 'Pike Push-ups', target: `3 x ${8 + (week - 1)} reps`, info: 'En V invertida' },
-                    { name: 'Wall Walks / Hold', target: `${45 + (week - 1) * 5} seg`, info: 'Control vertical' },
-                    { name: 'Fondos (Dips)', target: '3 x Fallo', info: 'En silla o mesa' },
-                    { name: 'Remos Invertidos', target: '3 x 10 reps', info: 'Bajo la mesa' },
-                    { name: 'Rueda Abdominal', target: `3 x ${12 + (week - 1)} reps`, info: 'Retro Pélvica' }
+                    { name: 'Pike Push-ups', target: `3 x ${8 + (week - 1)} reps`, info: 'Hombros' },
+                    { name: 'Wall Walks / Hold', target: `${45 + (week - 1) * 5} seg`, info: 'Core' },
+                    { name: 'Fondos (Dips)', target: '3 x Fallo', info: 'Tríceps' },
+                    { name: 'Remos Invertidos', target: '3 x 10 reps', info: 'Espalda' },
+                    { name: 'Rueda Abdominal', target: `3 x ${12 + (week - 1)} reps`, info: 'Core' }
                 ]},
-                'Martes': { type: 'running', title: 'Velocidad (Intervalos)', focus: 'VO2 Max', tasks: [
+                'Martes': { type: 'running', title: 'Velocidad (Intervalos)', focus: 'Potencia', tasks: [
                     { name: 'Trote Calentamiento', target: '10 min' },
-                    { name: 'Series 800m', target: `${6 + (week > 2 ? 2 : 0)} reps`, info: 'Ritmo carrera 5k' },
-                    { name: 'Descanso Activo', target: '2 min caminando' }
+                    { name: 'Series 800m', target: `${6 + Math.floor(week/2)} reps`, info: 'Ritmo 5k' },
+                    { name: 'Caminata de vuelta', target: '5 min' }
                 ]},
-                'Miércoles': { type: 'fuerza', title: 'Piernas & Estabilidad', focus: 'Potencia Ironman', exercises: [
-                    { name: 'Zancada Búlgara', target: '3 x 12 p/p', info: 'Pie atrás en silla' },
-                    { name: 'Puentes Glúteo 1 pierna', target: '3 x 15 p/p', info: 'Cadena posterior' },
-                    { name: 'Elevación Talones', target: '3 x 30 reps', info: 'Fortalecer sóleo' },
-                    { name: 'Máquina de Abs', target: '3 x 15 reps', info: 'Máxima carga' }
+                'Miércoles': { type: 'fuerza', title: 'Piernas & Estabilidad', focus: 'Ironman Prep', exercises: [
+                    { name: 'Zancada Búlgara', target: '3 x 12 p/p', info: 'Piernas' },
+                    { name: 'Puentes Glúteo 1 pierna', target: '3 x 15 p/p', info: 'Glúteos' },
+                    { name: 'Elevación Talones', target: '3 x 30 reps', info: 'Pantorrilla' },
+                    { name: 'Máquina de Abs', target: '3 x 15 reps', info: 'Core' }
                 ]},
-                'Jueves': { type: 'running', title: 'Tempo Run', focus: 'Resistencia Aeróbica', tasks: [
-                    { name: 'Carrera Constante', target: `${8 + (week - 1)} km`, info: 'Ritmo incómodo pero sostenible' },
-                    { name: 'Cadencia 180', target: 'Enfoque técnico', info: 'Pasos cortos' }
+                'Jueves': { type: 'running', title: 'Tempo Run', focus: 'Umbral', tasks: [
+                    { name: 'Carrera Constante', target: `${8 + Math.floor(week/2)} km`, info: 'Ritmo sostenido' },
+                    { name: 'Cadencia 180', target: 'Control', info: 'Técnica' }
                 ]},
-                'Viernes': { type: 'fuerza', title: 'Full Body & Skill', focus: 'Handstand Pro', exercises: [
-                    { name: 'Práctica Handstand', target: `${15 + (week - 1) * 2} min`, info: 'Libre o pared' },
-                    { name: 'Flexiones Diamante', target: '3 x Fallo', info: 'Tríceps' },
-                    { name: 'Rueda Abdominal', target: '4 x 10 reps', info: 'Lento' }
+                'Viernes': { type: 'fuerza', title: 'Full Body & Skill', focus: 'Handstand Mastery', exercises: [
+                    { name: 'Práctica Handstand', target: `${15 + (week - 1) * 2} min`, info: 'Equilibrio' },
+                    { name: 'Flexiones Diamante', target: '3 x Fallo', info: 'Empuje' },
+                    { name: 'Rueda Abdominal', target: '4 x 10 reps', info: 'Fuerza' }
                 ]},
-                'Sábado': { type: 'running', title: 'Long Run (Base)', focus: 'Ultra Resistencia', tasks: [
-                    { name: 'Distancia Larga', target: `${15 + (week - 1) * 2} km`, info: 'Zona 2 (puedes hablar)' },
-                    { name: 'Nutrición en carrera', target: 'Hidratación/Geles', info: 'Cada 30 min' }
+                'Sábado': { type: 'running', title: 'Long Run (Ironman Base)', focus: 'Resistencia', tasks: [
+                    { name: 'Distancia Larga', target: `${15 + (week - 1) * 2} km`, info: 'Zona 2' },
+                    { name: 'Test de Nutrición', target: 'Geles/Sales', info: 'Digestión' }
                 ]},
                 'Domingo': { type: 'rest', title: 'Recovery Activo', focus: 'Movilidad', tasks: [
-                    { name: 'Estiramiento Global', target: '15 min', info: 'Sin dolor' },
-                    { name: 'Movilidad Hombros', target: '10 min', info: 'Apertura escapular' }
+                    { name: 'Estiramiento Global', target: '15 min', info: 'Flexibilidad' },
+                    { name: 'Movilidad Hombros', target: '10 min', info: 'Rango' }
                 ]}
             };
             return data[day];
@@ -168,7 +178,7 @@
                     const loader = document.getElementById('loading');
                     if (loader) loader.style.opacity = '0';
                     setTimeout(() => { if(loader) loader.style.display = 'none'; }, 500);
-                }, 1000);
+                }, 800);
             }, []);
 
             const toggleExercise = (name) => {
@@ -183,7 +193,7 @@
                 setWeek(nextWeek);
                 localStorage.setItem('califest_week', nextWeek.toString());
                 setActiveTab('today');
-                window.scrollTo(0,0);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             };
 
             const handleRunInput = (field, val) => {
@@ -196,10 +206,10 @@
             const currentDayName = DAYS[currentDayIndex];
             const workout = getWorkoutForWeek(currentDayName, week);
 
-            const calculateDayProgress = (dayName) => {
-                const dayWorkout = getWorkoutForWeek(dayName, week);
+            const calculateDayProgress = (dayName, w = week) => {
+                const dayWorkout = getWorkoutForWeek(dayName, w);
                 const dayItems = (dayWorkout.exercises || dayWorkout.tasks);
-                const done = dayItems.filter(i => completedExercises[`W${week}-${dayName}-${i.name}`]).length;
+                const done = dayItems.filter(i => completedExercises[`W${w}-${dayName}-${i.name}`]).length;
                 return { done, total: dayItems.length };
             };
 
@@ -209,18 +219,38 @@
                 return total === 0 ? 0 : Math.round((done / total) * 100);
             };
 
+            // Datos para la gráfica
+            const historyData = useMemo(() => {
+                const stats = [];
+                for(let w = 1; w <= week; w++) {
+                    let weeklyKm = 0;
+                    DAYS.forEach(d => {
+                        const val = runStats[`W${w}-${d}`]?.km;
+                        if(val) weeklyKm += parseFloat(val);
+                    });
+                    stats.push({ week: w, km: weeklyKm });
+                }
+                return stats;
+            }, [runStats, week]);
+
+            const maxKm = Math.max(...historyData.map(d => d.km), 1);
+
             return (
-                <div className="flex flex-col min-h-screen">
-                    <header className="pt-14 pb-8 px-8 bg-neutral-900/95 border-b border-white/5 sticky top-0 z-40 backdrop-blur-2xl">
-                        <div className="flex justify-between items-end mb-8">
+                <div className="app-container">
+                    {/* Header */}
+                    <header className="pt-16 pb-6 px-8 bg-neutral-900 border-b border-white/5 sticky top-0 z-40">
+                        <div className="flex justify-between items-end mb-6">
                             <div>
-                                <h1 className="text-3xl font-[900] text-[#deff9a] italic tracking-tighter leading-none mb-1">CALI FEST</h1>
-                                <p className="text-[10px] text-neutral-500 font-extrabold uppercase tracking-[0.4em]">Week {week.toString().padStart(2, '0')}</p>
+                                <h1 className="text-3xl font-[900] text-[#deff9a] italic tracking-tighter leading-none mb-1 uppercase">Cali Fest</h1>
+                                <p className="text-[10px] text-neutral-500 font-extrabold uppercase tracking-[0.4em]">Progreso Híbrido</p>
                             </div>
-                            <div className="flex flex-col items-end">
-                                <span className="text-2xl font-black text-white">{totalProgress()}%</span>
-                                <div className="w-16 h-0.5 bg-neutral-800 mt-1">
-                                    <div className="h-full bg-[#deff9a] transition-all duration-700" style={{ width: `${totalProgress()}%` }} />
+                            <div className="text-right">
+                                <div className="text-[10px] text-neutral-500 font-bold uppercase mb-1">Semana {week}</div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-16 h-1.5 bg-neutral-800 rounded-full overflow-hidden">
+                                        <div className="h-full bg-[#deff9a] transition-all duration-700" style={{ width: `${totalProgress()}%` }} />
+                                    </div>
+                                    <span className="text-xs font-black text-white">{totalProgress()}%</span>
                                 </div>
                             </div>
                         </div>
@@ -238,19 +268,19 @@
                         )}
                     </header>
 
-                    <main className="p-6 max-w-lg mx-auto w-full flex-grow">
+                    <main className="p-6 max-w-lg mx-auto w-full">
                         {activeTab === 'today' ? (
                             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                <div className={`rounded-[3rem] p-8 mb-8 border transition-all ${
+                                <div className={`rounded-[2.5rem] p-8 mb-8 border transition-all ${
                                     workout.type === 'fuerza' ? 'bg-indigo-600/5 border-indigo-500/20' : 
                                     workout.type === 'running' ? 'bg-emerald-600/5 border-emerald-500/20' : 'bg-neutral-900 border-white/5'
                                 }`}>
                                     <div className="flex items-center gap-5 mb-10">
-                                        <div className={`p-5 rounded-[1.5rem] shadow-xl ${
+                                        <div className={`p-4 rounded-2xl shadow-xl ${
                                             workout.type === 'fuerza' ? 'bg-indigo-500/20 text-indigo-400' : 
                                             workout.type === 'running' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-neutral-800 text-neutral-400'
                                         }`}>
-                                            <Icon name={workout.type === 'fuerza' ? 'dumbbell' : 'footprints'} />
+                                            <Icon name={workout.type === 'fuerza' ? 'dumbbell' : 'footprints'} className="w-8 h-8" />
                                         </div>
                                         <div>
                                             <h3 className="text-xl font-black uppercase italic leading-tight">{workout.title}</h3>
@@ -263,15 +293,15 @@
                                             const isDone = completedExercises[`W${week}-${currentDayName}-${item.name}`];
                                             return (
                                                 <button key={idx} onClick={() => toggleExercise(item.name)} 
-                                                    className={`w-full flex items-center gap-5 p-5 rounded-[2rem] border transition-all active:scale-[0.97] ${isDone ? 'bg-neutral-900/50 border-transparent opacity-40' : 'bg-neutral-800/60 border-white/5 shadow-lg'}`}>
+                                                    className={`w-full flex items-center gap-5 p-5 rounded-[1.8rem] border transition-all active:scale-[0.98] ${isDone ? 'bg-neutral-900/50 border-transparent opacity-40' : 'bg-neutral-800/60 border-white/5 shadow-lg'}`}>
                                                     <div className={`${isDone ? 'text-[#deff9a]' : 'text-neutral-700'}`}>
                                                         <Icon name={isDone ? 'check' : 'plus'} />
                                                     </div>
                                                     <div className="text-left flex-1">
                                                         <p className={`text-[14px] font-extrabold ${isDone ? 'line-through' : 'text-white'}`}>{item.name}</p>
                                                         <div className="flex items-center gap-2 mt-1">
-                                                            <span className="text-[9px] text-neutral-500 font-bold uppercase">{item.target}</span>
-                                                            {!isDone && <span className="text-[9px] text-neutral-700 font-bold">• {item.info}</span>}
+                                                            <span className="text-[10px] text-neutral-500 font-bold uppercase">{item.target}</span>
+                                                            <span className="text-[10px] text-neutral-700 font-bold">• {item.info}</span>
                                                         </div>
                                                     </div>
                                                 </button>
@@ -281,75 +311,153 @@
 
                                     {workout.type === 'running' && (
                                         <div className="mt-12 pt-10 border-t border-white/10">
-                                            <h4 className="text-[10px] font-black text-[#deff9a] uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                                                <Icon name="chart" className="w-3 h-3" /> Registrar Actividad
+                                            <h4 className="text-[11px] font-black text-[#deff9a] uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                                                <Icon name="chart" className="w-3 h-3" /> Registrar Carrera
                                             </h4>
                                             <div className="grid grid-cols-2 gap-5">
-                                                <div className="bg-black/50 p-5 rounded-[1.5rem] border border-white/5">
-                                                    <label className="text-[9px] font-black text-neutral-600 block mb-2 uppercase">Kilómetros</label>
-                                                    <input type="number" placeholder="0.0" value={runStats[`W${week}-${currentDayName}`]?.km || ''} onChange={e => handleRunInput('km', e.target.value)} className="bg-transparent w-full text-2xl font-black text-[#deff9a] outline-none" />
+                                                <div className="bg-black/40 p-5 rounded-[1.5rem] border border-white/5">
+                                                    <label className="text-[9px] font-black text-neutral-600 block mb-2 uppercase tracking-tighter">Kilómetros</label>
+                                                    <input 
+                                                        type="number" 
+                                                        inputMode="decimal"
+                                                        placeholder="0.0" 
+                                                        value={runStats[`W${week}-${currentDayName}`]?.km || ''} 
+                                                        onChange={e => handleRunInput('km', e.target.value)} 
+                                                        className="bg-transparent w-full text-2xl font-black text-[#deff9a] outline-none" 
+                                                    />
                                                 </div>
-                                                <div className="bg-black/50 p-5 rounded-[1.5rem] border border-white/5">
-                                                    <label className="text-[9px] font-black text-neutral-600 block mb-2 uppercase">Minutos</label>
-                                                    <input type="number" placeholder="0" value={runStats[`W${week}-${currentDayName}`]?.min || ''} onChange={e => handleRunInput('min', e.target.value)} className="bg-transparent w-full text-2xl font-black text-white outline-none" />
+                                                <div className="bg-black/40 p-5 rounded-[1.5rem] border border-white/5">
+                                                    <label className="text-[9px] font-black text-neutral-600 block mb-2 uppercase tracking-tighter">Minutos</label>
+                                                    <input 
+                                                        type="number" 
+                                                        inputMode="numeric"
+                                                        placeholder="0" 
+                                                        value={runStats[`W${week}-${currentDayName}`]?.min || ''} 
+                                                        onChange={e => handleRunInput('min', e.target.value)} 
+                                                        className="bg-transparent w-full text-2xl font-black text-white outline-none" 
+                                                    />
                                                 </div>
                                             </div>
+                                            <p className="mt-4 text-[9px] text-neutral-500 font-medium italic">* Se guarda automáticamente al escribir.</p>
                                         </div>
                                     )}
                                 </div>
                             </div>
                         ) : (
-                            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
-                                <h3 className="text-3xl font-[900] italic tracking-tighter uppercase">Progreso Semanal</h3>
-                                <div className="grid gap-3">
-                                    {DAYS.map(day => {
-                                        const { done, total } = calculateDayProgress(day);
-                                        const isComp = done === total && total > 0;
-                                        return (
-                                            <div key={day} className={`p-6 rounded-[2.5rem] border flex justify-between items-center transition-all ${isComp ? 'bg-[#deff9a]/5 border-[#deff9a]/20' : 'bg-neutral-900 border-white/5'}`}>
-                                                <div className="flex items-center gap-4">
-                                                    <div className={`w-2 h-2 rounded-full ${isComp ? 'bg-[#deff9a]' : 'bg-neutral-800'}`} />
+                            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                
+                                {/* Resumen Semanal */}
+                                <div className="space-y-4">
+                                    <h3 className="text-xl font-black italic tracking-tighter uppercase px-2">Estado Semanal</h3>
+                                    <div className="grid gap-3">
+                                        {DAYS.map(day => {
+                                            const { done, total } = calculateDayProgress(day);
+                                            const isComp = done === total && total > 0;
+                                            return (
+                                                <div key={day} className={`p-5 rounded-[1.8rem] border flex justify-between items-center transition-all ${isComp ? 'bg-[#deff9a]/5 border-[#deff9a]/20' : 'bg-neutral-900 border-white/5'}`}>
                                                     <div>
-                                                        <p className={`text-[12px] font-black uppercase tracking-tight ${isComp ? 'text-[#deff9a]' : 'text-neutral-500'}`}>{day}</p>
-                                                        <p className="text-[10px] text-neutral-700 font-bold uppercase">{getWorkoutForWeek(day, week).title}</p>
+                                                        <p className={`text-[11px] font-black uppercase ${isComp ? 'text-[#deff9a]' : 'text-neutral-500'}`}>{day}</p>
+                                                        <p className="text-[9px] text-neutral-700 font-bold uppercase">{getWorkoutForWeek(day, week).title}</p>
+                                                    </div>
+                                                    <div className="flex items-center gap-4">
+                                                        <span className="text-xs font-black italic">{done}/{total}</span>
+                                                        <div className={`w-2 h-2 rounded-full ${isComp ? 'bg-[#deff9a] shadow-[0_0_8px_#deff9a]' : 'bg-neutral-800'}`} />
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-3">
-                                                    <span className="text-[13px] font-black italic">{done}/{total}</span>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
+                                            );
+                                        })}
+                                    </div>
                                 </div>
+
+                                {/* Gráfica de KM */}
+                                <div className="bg-neutral-900 rounded-[2rem] p-8 border border-white/5">
+                                    <div className="flex justify-between items-center mb-8">
+                                        <h3 className="text-sm font-black uppercase tracking-widest text-[#deff9a]">Histórico de KM</h3>
+                                        <span className="text-[10px] text-neutral-500 font-bold uppercase">Semana 1 - {week}</span>
+                                    </div>
+                                    
+                                    <div className="relative h-32 w-full flex items-end justify-between gap-1 px-2">
+                                        {historyData.map((d, i) => (
+                                            <div key={i} className="flex flex-col items-center flex-1 group">
+                                                <div className="relative w-full flex items-end justify-center">
+                                                    <div 
+                                                        className="w-4 bg-gradient-to-t from-[#deff9a]/20 to-[#deff9a] rounded-t-full transition-all duration-1000"
+                                                        style={{ height: `${(d.km / maxKm) * 100}%`, minHeight: '4px' }}
+                                                    />
+                                                    <div className="absolute -top-6 text-[8px] font-bold opacity-0 group-hover:opacity-100 transition-opacity bg-neutral-800 px-1 rounded">
+                                                        {d.km}k
+                                                    </div>
+                                                </div>
+                                                <span className="text-[8px] mt-2 font-black text-neutral-600">W{d.week}</span>
+                                            </div>
+                                        ))}
+                                        {/* Línea base */}
+                                        <div className="absolute bottom-[20px] left-0 right-0 h-px bg-white/5 -z-10" />
+                                    </div>
+                                    
+                                    <div className="mt-8 flex justify-around text-center">
+                                        <div>
+                                            <p className="text-xs font-black text-white">{historyData.reduce((a,b)=>a+b.km, 0).toFixed(1)}k</p>
+                                            <p className="text-[8px] text-neutral-500 font-bold uppercase">Total KM</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-black text-[#deff9a]">{week}</p>
+                                            <p className="text-[8px] text-neutral-500 font-bold uppercase">Semanas</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-black text-white">{Math.round(totalProgress())}%</p>
+                                            <p className="text-[8px] text-neutral-500 font-bold uppercase">Meta W{week}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <button onClick={advanceWeek} disabled={totalProgress() < 80} 
-                                    className={`w-full py-7 rounded-[2.5rem] font-black italic text-xl mt-8 transition-all active:scale-95 ${totalProgress() >= 80 ? 'bg-[#deff9a] text-black shadow-2xl shadow-[#deff9a]/30' : 'bg-neutral-800 text-neutral-600 opacity-50'}`}>
-                                    SUBIR A SEMANA {week + 1}
+                                    className={`w-full py-7 rounded-[2.2rem] font-black italic text-lg transition-all active:scale-95 ${totalProgress() >= 80 ? 'bg-[#deff9a] text-black shadow-2xl shadow-[#deff9a]/30' : 'bg-neutral-800 text-neutral-600 opacity-50'}`}>
+                                    CONSOLIDAR SEMANA {week}
                                 </button>
-                                {totalProgress() < 80 && <p className="text-center text-[10px] text-neutral-600 uppercase font-black tracking-widest">Necesitas 80% para avanzar</p>}
+                                {totalProgress() < 80 && <p className="text-center text-[10px] text-neutral-600 uppercase font-black tracking-widest px-8">Debes completar el 80% de tus entrenamientos para subir de nivel.</p>}
+
+                                <div className="h-20" /> {/* Espacio final para el scroll */}
                             </div>
                         )}
                     </main>
 
-                    <nav className="fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-3xl border-t border-white/5 px-12 pt-6 pb-12 flex justify-around items-center z-50">
+                    {/* Navigation */}
+                    <nav className="fixed bottom-0 left-0 right-0 glass border-t border-white/5 px-12 pt-6 pb-12 flex justify-around items-center z-50">
                         <button onClick={() => setActiveTab('today')} className={`p-3 transition-all ${activeTab === 'today' ? 'active-tab' : 'text-neutral-700'}`}>
                             <Icon name="calendar" />
+                            <span className="sr-only">Hoy</span>
                         </button>
-                        <button onClick={() => setShowModal(true)} className="w-16 h-16 bg-[#deff9a] rounded-full flex items-center justify-center -mt-20 border-[6px] border-black text-black active:scale-[0.85] transition-all shadow-2xl shadow-[#deff9a]/40">
-                            <Icon name="plus" />
-                        </button>
-                        <button onClick={() => setActiveTab('progress')} className={`p-3 transition-all ${activeTab === 'progress' ? 'text-neutral-700' : 'text-neutral-700'}`}>
+                        
+                        <div className="relative">
+                            <button onClick={() => setShowModal(true)} className="w-16 h-16 bg-[#deff9a] rounded-full flex items-center justify-center -mt-20 border-[6px] border-black text-black active:scale-[0.85] transition-all shadow-2xl shadow-[#deff9a]/40">
+                                <Icon name="plus" />
+                            </button>
+                        </div>
+
+                        <button onClick={() => setActiveTab('progress')} className={`p-3 transition-all ${activeTab === 'progress' ? 'active-tab' : 'text-neutral-700'}`}>
                             <Icon name="chart" />
+                            <span className="sr-only">Progreso</span>
                         </button>
                     </nav>
 
+                    {/* Modal */}
                     {showModal && (
                         <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-black/98 backdrop-blur-2xl animate-in zoom-in-95 duration-200">
-                            <div className="bg-neutral-900 w-full max-w-sm rounded-[3.5rem] p-12 border border-white/10 relative shadow-2xl">
+                            <div className="bg-neutral-900 w-full max-w-sm rounded-[3.5rem] p-10 border border-white/10 relative shadow-2xl">
                                 <button onClick={() => setShowModal(false)} className="absolute top-8 right-8 text-neutral-500 active:scale-75 transition-transform">
                                     <Icon name="plus" className="rotate-45" />
                                 </button>
-                                <h3 className="text-3xl font-black italic text-[#deff9a] mb-8 uppercase tracking-tighter">Éxitos</h3>
-                                <textarea className="w-full bg-black rounded-[2rem] p-8 text-[15px] border border-white/5 h-48 outline-none mb-8 focus:border-[#deff9a]/40 transition-all font-medium text-white" placeholder="¿Qué récord rompiste hoy?" value={note} onChange={e => setNote(e.target.value)} />
+                                <div className="flex items-center gap-3 mb-8">
+                                    <Icon name="target" className="text-[#deff9a]" />
+                                    <h3 className="text-2xl font-black italic text-[#deff9a] uppercase tracking-tighter">Diario Élite</h3>
+                                </div>
+                                <textarea 
+                                    className="w-full bg-black rounded-[2rem] p-8 text-[15px] border border-white/5 h-48 outline-none mb-8 focus:border-[#deff9a]/40 transition-all font-medium text-white" 
+                                    placeholder="¿Lograste ese parado de manos? ¿Cómo se sintieron esos kilómetros?" 
+                                    value={note} 
+                                    onChange={e => setNote(e.target.value)} 
+                                />
                                 <button onClick={() => { 
                                     if(note.trim()) {
                                         const logs = JSON.parse(localStorage.getItem('califest_logs') || '[]');
